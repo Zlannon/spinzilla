@@ -1,0 +1,34 @@
+package com.team233.swerve;
+
+import com.team233.trailblazer.Trailblazer;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
+
+public class TrailblazerDriveSource implements DriveSource {
+  private final Trailblazer trailblazer;
+  private final Supplier<Pose2d> currentPose;
+  private final Supplier<ChassisSpeeds> currentFieldRelativeSpeeds;
+
+  public TrailblazerDriveSource(
+      Trailblazer trailblazer,
+      Supplier<Pose2d> currentPose,
+      Supplier<ChassisSpeeds> currentFieldRelativeSpeeds) {
+    this.trailblazer = trailblazer;
+    this.currentPose = currentPose;
+    this.currentFieldRelativeSpeeds = currentFieldRelativeSpeeds;
+  }
+
+  @Override
+  public DriveSourceType getDriveSourceType() {
+    return DriveSourceType.FIELD_CENTRIC_CLOSED_LOOP;
+  }
+
+  @Override
+  public ChassisSpeeds getRequestedSpeeds(@Nullable Rotation2d snapAngle) {
+    return trailblazer.getFieldRelativeSetpoint(
+        currentPose.get(), currentFieldRelativeSpeeds.get(), snapAngle);
+  }
+}

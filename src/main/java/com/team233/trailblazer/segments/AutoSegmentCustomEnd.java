@@ -1,0 +1,52 @@
+package com.team233.trailblazer.segments;
+
+import com.team233.math.PoseErrorTolerance;
+import com.team233.trailblazer.AngularConstraintOptions;
+import com.team233.trailblazer.AutoPoint;
+import com.team233.trailblazer.LinearConstraintOptions;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import java.util.List;
+import java.util.Optional;
+
+public class AutoSegmentCustomEnd extends AutoSegment {
+  private final PoseErrorTolerance finishedTolerance;
+
+  public AutoSegmentCustomEnd(
+      List<AutoPoint<?>> points,
+      Optional<LinearConstraintOptions> linearConstraints,
+      Optional<AngularConstraintOptions> angularConstraints,
+      PoseErrorTolerance finishedTolerance) {
+    super(points, linearConstraints, angularConstraints);
+    this.finishedTolerance = finishedTolerance;
+  }
+
+  @Override
+  public boolean atGoal(Pose2d robotPose, int currentIndex) {
+    if (points.isEmpty()) {
+      return true;
+    }
+
+    if (currentIndex != points.size() - 1) {
+      // We aren't at the last point in the list, so we definitely aren't finished
+      return false;
+    }
+
+    return finishedTolerance.atPose(points.get(points.size() - 1).getPose(), robotPose);
+  }
+
+  @Override
+  public boolean atGoal(Translation2d robotTranslation, int currentIndex) {
+    if (points.isEmpty()) {
+      return true;
+    }
+
+    if (currentIndex != points.size() - 1) {
+      // We aren't at the last point in the list, so we definitely aren't finished
+      return false;
+    }
+
+    return finishedTolerance.atTranslation(
+        points.get(points.size() - 1).getPose().getTranslation(), robotTranslation);
+  }
+}
