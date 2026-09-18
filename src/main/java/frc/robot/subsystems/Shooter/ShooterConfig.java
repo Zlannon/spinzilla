@@ -88,20 +88,20 @@ public class ShooterConfig {
       PolynomialRegression.quadratic("Shooter/ScoringToFRegression", DISTANCE_TO_SCORE_TOF);
   public static final PolynomialRegression FEEDING_TOF_REGRESSION_MODEL =
       PolynomialRegression.quadratic("Shooter/FeedingToFRegression", DISTANCE_TO_FEED_TOF);
-  public static final TalonFXConfiguration TOP_LEFT_MOTOR_CONFIGS =
+  public static final TalonFXConfiguration FLYWHEEL_LEFT_MOTOR_CONFIGS =
       createMotorConfig()
           .withMotorOutput(new MotorOutputConfigs().withInverted(InvertedValue.Clockwise_Positive))
           .withSlot0(new Slot0Configs().withKP(0.0).withKV(0.0));
-  public static final TalonFXConfiguration TOP_RIGHT_MOTOR_CONFIG =
+  public static final TalonFXConfiguration FLYWHEEL_RIGHT_MOTOR_CONFIG =
       createMotorConfig()
           .withMotorOutput(
               new MotorOutputConfigs().withInverted(InvertedValue.CounterClockwise_Positive))
           .withSlot0(new Slot0Configs().withKP(14.0).withKS(6.4).withKV(0.13));
-  public static final TalonFXConfiguration BOTTOM_LEFT_MOTOR_CONFIG =
+  public static final TalonFXConfiguration PIVOT_MOTOR_CONFIG =
       createMotorConfig()
           .withMotorOutput(new MotorOutputConfigs().withInverted(InvertedValue.Clockwise_Positive))
           .withSlot0(new Slot0Configs().withKP(0.0).withKV(0.0));
-  public static final TalonFXConfiguration BOTTOM_RIGHT_MOTOR_CONFIG =
+  public static final TalonFXConfiguration INDEX_MOTOR_CONFIG =
       createMotorConfig()
           .withMotorOutput(
               new MotorOutputConfigs().withInverted(InvertedValue.CounterClockwise_Positive))

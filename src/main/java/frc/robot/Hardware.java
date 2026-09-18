@@ -17,14 +17,14 @@ public class Hardware {
   public final XboxController driverController = new XboxController(0);
   public final XboxController operatorController = new XboxController(1);
 
-  private final CANBus canivore = new CANBus("233CANivore");
+  private final CANBus canivore = new CANBus("233Canivore");
   private final CANBus rio = CANBus.roboRIO();
 
   public final DifferentialMechanism<TalonFX> deployDifferentialMechanism =
       new DifferentialMechanism<>(
           TalonFX::new,
           new DifferentialMotorConstants<TalonFXConfiguration>()
-              .withCANBusName(canivore.getName())
+              .withCANBusName(rio.getName())
               .withLeaderId(15)
               .withFollowerId(30)
               .withAlignment(MotorAlignmentValue.Opposed)
@@ -32,21 +32,17 @@ public class Hardware {
               .withFollowerInitialConfigs(DeployConfig.RIGHT_MOTOR_CONFIG)
               .withFollowerUsesCommonLeaderConfigs(true));
 
-  public final TalonFX intakeLeftMotor = new TalonFX(16, rio);
-  public final TalonFX intakeRightMotor = new TalonFX(17, rio);
+  public final TalonFX dyeRotorRoller = new TalonFX(18, rio);
+  public final TalonFX dyeRotorRotate = new TalonFX(19, rio);
 
-  public final TalonFX dyeRotorLeftMotor = new TalonFX(18, canivore);
-  public final TalonFX dyeRotorRightMotor = new TalonFX(19, canivore);
+  public final TalonFX collectorLeftMotor = new TalonFX(20, rio);
+  public final TalonFX collectorRightMotor = new TalonFX(21, rio);
 
-  public final TalonFX collectorLeftMotor = new TalonFX(30, canivore);
-  public final TalonFX collectorRightMotor = new TalonFX(31, canivore);
-
-  public final TalonFX shooterHoodMotor = new TalonFX(22, canivore);
-
-  public final TalonFX shooterBottomLeftMotor = new TalonFX(23, canivore);
-  public final TalonFX shooterBottomRightMotor = new TalonFX(24, canivore);
-  public final TalonFX shooterTopLeftMotor = new TalonFX(25, canivore);
-  public final TalonFX shooterTopRightMotor = new TalonFX(26, canivore);
+  public final TalonFX shooterHoodMotor = new TalonFX(14, rio);
+  public final TalonFX shooterFlywheelLeftMotor = new TalonFX(16, rio);
+  public final TalonFX shooterFlywheelRightMotor = new TalonFX(17, rio);
+  public final TalonFX shooterPivotMotor = new TalonFX(13, rio);
+  public final TalonFX shooterIndexMotor = new TalonFX(15, rio);
 
   public final CANrange hopperCANRange = new CANrange(27, rio);
   public final DigitalInput towerSensor = new DigitalInput(9);

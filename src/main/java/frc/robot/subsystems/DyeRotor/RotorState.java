@@ -15,7 +15,7 @@ public enum RotorState {
 
   RotorState(double voltage) {
     this.voltage = voltage;
-    this.tunableVoltage = DogLog.tunable("Feeder/" + this, voltage);
+    this.tunableVoltage = DogLog.tunable("DyeRotor/" + this, voltage);
   }
 
   public double getVoltage() {

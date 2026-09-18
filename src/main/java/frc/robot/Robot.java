@@ -66,17 +66,18 @@ public class Robot extends Base233Robot {
 
   private final Shooter shooter =
       new Shooter(
-          hardware.shooterTopLeftMotor,
-          hardware.shooterTopRightMotor,
-          hardware.shooterBottomLeftMotor,
-          hardware.shooterBottomRightMotor);
+          hardware.shooterFlywheelLeftMotor,
+          hardware.shooterFlywheelRightMotor,
+          hardware.shooterPivotMotor,
+          hardware.shooterIndexMotor,
+          hardware.shooterHoodMotor);
   private final Collector collector = new Collector(hardware.collectorLeftMotor, hardware.collectorRightMotor);
   private final Deploy deploy = new Deploy(hardware.deployDifferentialMechanism);
   private final Vision vision =
       new Vision(imu, frontLimelight, backLimelight);
   private final Localization localization =
       new Localization(swerve, hardware.drivetrain, vision, imu);
-  private final DyeRotor dyeRotor = new DyeRotor(hardware.dyeRotorLeftMotor, hardware.dyeRotorRightMotor);
+  private final DyeRotor dyeRotor = new DyeRotor(hardware.dyeRotorRoller, hardware.dyeRotorRotate);
 
   private final ClusterMap clusterMap = new ClusterMap(localization, swerve, frontLimelight);
   private final HubActivity hubActivity = new HubActivity();

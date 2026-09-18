@@ -15,31 +15,31 @@ import frc.robot.util.scheduling.SubsystemPriority;
 
 public class DyeRotor extends StateMachineSubsystem<RotorState> implements PowerManaged {
 
-  private final TalonFX topMotor;
-  private final TalonFX bottomMotor;
+  private final TalonFX dyeRotorRoller;
+  private final TalonFX dyeRotorRotate;
   private final NeutralOut neutralRequest = new NeutralOut();
   private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true);
 
-  private final StatusSignal<AngularVelocity> topVelocitySignal;
-  private final StatusSignal<AngularVelocity> bottomVelocitySignal;
-  private final StatusSignal<Current> topStatorCurrentSignal;
-  private final StatusSignal<Current> bottomStatorCurrentSignal;
+  private final StatusSignal<AngularVelocity> rollerVelocitySignal;
+  private final StatusSignal<AngularVelocity> rotateVelocitySignal;
+  private final StatusSignal<Current> rollerStatorCurrentSignal;
+  private final StatusSignal<Current> rotateStatorCurrentSignal;
 
   private double averageCurrent = 0.0;
 
-  public DyeRotor(TalonFX topMotor, TalonFX bottomMotor) {
+  public DyeRotor(TalonFX dyeRotorRoller, TalonFX dyeRotorRotate) {
     super(SubsystemPriority.FEEDER, RotorState.IDLE);
-    topMotor.getConfigurator().apply(RotorConfig.TOP_MOTOR_CONFIG);
-    bottomMotor.getConfigurator().apply(RotorConfig.BOTTOM_MOTOR_CONFIG);
-    this.topMotor = topMotor;
-    this.bottomMotor = bottomMotor;
+    dyeRotorRoller.getConfigurator().apply(RotorConfig.ROLLER_MOTOR_CONFIG);
+    dyeRotorRotate.getConfigurator().apply(RotorConfig.ROTATE_MOTOR_CONFIG);
+    this.dyeRotorRoller = dyeRotorRoller;
+    this.dyeRotorRotate = dyeRotorRotate;
 
-    topVelocitySignal = topMotor.getVelocity(false);
-    bottomVelocitySignal = bottomMotor.getVelocity(false);
-    topStatorCurrentSignal = topMotor.getStatorCurrent(false);
-    bottomStatorCurrentSignal = bottomMotor.getStatorCurrent(false);
-    Signals.forDevice(topMotor).addSignals(topVelocitySignal, topStatorCurrentSignal);
-    Signals.forDevice(bottomMotor).addSignals(bottomVelocitySignal, bottomStatorCurrentSignal);
+    rollerVelocitySignal = dyeRotorRoller.getVelocity(false);
+    rotateVelocitySignal = dyeRotorRotate.getVelocity(false);
+    rollerStatorCurrentSignal = dyeRotorRoller.getStatorCurrent(false);
+    rotateStatorCurrentSignal = dyeRotorRotate.getStatorCurrent(false);
+    Signals.forDevice(dyeRotorRoller).addSignals(rollerVelocitySignal, rollerStatorCurrentSignal);
+    Signals.forDevice(dyeRotorRotate).addSignals(rotateVelocitySignal, rotateStatorCurrentSignal);
   }
 
   public void shootRequest() {
@@ -66,25 +66,25 @@ public class DyeRotor extends StateMachineSubsystem<RotorState> implements Power
   protected void afterTransition(RotorState newState) {
     switch (newState) {
       case IDLE -> {
-        topMotor.setControl(neutralRequest);
-        bottomMotor.setControl(neutralRequest);
+        dyeRotorRoller.setControl(neutralRequest);
+        dyeRotorRotate.setControl(neutralRequest);
       }
       default -> {
-        topMotor.setControl(voltageRequest.withOutput(newState.getVoltage()));
-        bottomMotor.setControl(voltageRequest.withOutput(newState.getVoltage()));
+        dyeRotorRoller.setControl(voltageRequest.withOutput(newState.getVoltage()));
+        dyeRotorRotate.setControl(voltageRequest.withOutput(newState.getVoltage()));
       }
     }
   }
 
   @Override
   protected void collectInputs() {
-    DogLog.log("Feeder/Top/VelocityRPM", topVelocitySignal.getValueAsDouble() * 60.0);
-    DogLog.log("Feeder/Bottom/VelocityRPM", bottomVelocitySignal.getValueAsDouble() * 60.0);
+    DogLog.log("DyeRotor/Roller/VelocityRPM", rollerVelocitySignal.getValueAsDouble() * 60.0);
+    DogLog.log("DyeRotor/Rotate/VelocityRPM", rotateVelocitySignal.getValueAsDouble() * 60.0);
 
     averageCurrent =
         MathHelpers.average(
-            topStatorCurrentSignal.getValueAsDouble(),
-            bottomStatorCurrentSignal.getValueAsDouble());
+            rollerStatorCurrentSignal.getValueAsDouble(),
+            rotateStatorCurrentSignal.getValueAsDouble());
   }
 
   public double getAverageCurrent() {
@@ -93,14 +93,14 @@ public class DyeRotor extends StateMachineSubsystem<RotorState> implements Power
 
   @Override
   public void applyCurrentLimits(double supplyCurrentLimit) {
-    topMotor
+    dyeRotorRoller
         .getConfigurator()
         .apply(
-            RotorConfig.TOP_MOTOR_CONFIG.CurrentLimits.withSupplyCurrentLimit(supplyCurrentLimit));
-    bottomMotor
+            RotorConfig.ROLLER_MOTOR_CONFIG.CurrentLimits.withSupplyCurrentLimit(supplyCurrentLimit));
+    dyeRotorRotate
         .getConfigurator()
         .apply(
-            RotorConfig.BOTTOM_MOTOR_CONFIG.CurrentLimits.withSupplyCurrentLimit(
+            RotorConfig.ROTATE_MOTOR_CONFIG.CurrentLimits.withSupplyCurrentLimit(
                 supplyCurrentLimit));
   }
 }

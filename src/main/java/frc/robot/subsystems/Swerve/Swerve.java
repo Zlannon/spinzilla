@@ -55,11 +55,9 @@ public class Swerve extends StateMachineSubsystem<SwerveState> implements PowerM
   private boolean useLooseTolerance = false;
   private static final double LOOSE_TOLERANCE = 45.0;
 
-  // TODO(simonstoryparker): make separate ones for scoring
   private static final DoubleSubscriber MAX_LINEAR_RATE_SCORING =
       DogLog.tunable("Swerve/MaxLinearRateScoring", 1.5);
 
-  // TODO(simonstoryparker): make separate ones for scoring
   private static final DoubleSubscriber MAX_LINEAR_RATE_FEEDING =
       DogLog.tunable("Swerve/MaxLinearRateFeeding", 4.0);
 
