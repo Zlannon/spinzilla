@@ -2,7 +2,9 @@ package frc.robot.subsystems.Shooter;
 
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.sim.ChassisReference;
@@ -35,6 +37,12 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
         : ShooterConfig.DISTANCE_TO_FEEDING_RPM.get(distance);
   }
 
+  private static double distanceToPivotAngle(double distance) {
+    return FeatureFlags.REGRESSION_MODEL.getAsBoolean()
+        ? ShooterConfig.PIVOT_REGRESSION_MODEL.calculate(distance)
+        : ShooterConfig.DISTANCE_TO_PIVOT_ANGLE.get(distance);
+  }
+
   private final TalonFX shooterFlywheelLeftMotor;
   private final TalonFX shooterFlywheelRightMotor;
   public final TalonFX shooterPivotMotor;
@@ -43,7 +51,10 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
 
   private final Follower flywheelLeftFollower;
 
+  // Control requests
   private final VelocityTorqueCurrentFOC velocityRequest = new VelocityTorqueCurrentFOC(0);
+  private final VoltageOut indexVoltageRequest = new VoltageOut(0).withEnableFOC(true);
+  private final PositionVoltage pivotPositionRequest = new PositionVoltage(0).withEnableFOC(true);
 
   private final StatusSignal<AngularVelocity> flywheelLeftVelocitySignal;
   private final StatusSignal<AngularVelocity> flywheelRightVelocitySignal;
@@ -76,6 +87,7 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
 
   private double shootingRpm = 0;
   private double feedingRpm = 0;
+  private double targetPivotAngle = 0;
   private double flywheelLeftMotorRpm = 0;
   private double flywheelRightMotorRpm = 0;
   private double pivotMotorRpm = 0;
@@ -105,10 +117,8 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
 
     TunablePid.register("Shooter/flywheelLeft", shooterFlywheelLeftMotor, ShooterConfig.FLYWHEEL_LEFT_MOTOR_CONFIGS);
     TunablePid.register("Shooter/flywheelRight", shooterFlywheelRightMotor, ShooterConfig.FLYWHEEL_RIGHT_MOTOR_CONFIG);
-    TunablePid.register(
-        "Shooter/pivot", shooterPivotMotor, ShooterConfig.PIVOT_MOTOR_CONFIG);
-    TunablePid.register(
-        "Shooter/index", shooterIndexMotor, ShooterConfig.INDEX_MOTOR_CONFIG);
+    TunablePid.register("Shooter/pivot", shooterPivotMotor, ShooterConfig.PIVOT_MOTOR_CONFIG);
+    TunablePid.register("Shooter/index", shooterIndexMotor, ShooterConfig.INDEX_MOTOR_CONFIG);
 
     this.shooterFlywheelLeftMotor = shooterFlywheelLeftMotor;
     this.shooterFlywheelRightMotor = shooterFlywheelRightMotor;
@@ -145,11 +155,9 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
             flywheelRightSupplyCurrentSignal,
             flywheelRightTorqueCurrentSignal);
     Signals.forDevice(shooterPivotMotor)
-        .addSignals(
-            pivotVelocitySignal, pivotVoltageSignal, pivotSupplyCurrentSignal);
+        .addSignals(pivotVelocitySignal, pivotVoltageSignal, pivotSupplyCurrentSignal);
     Signals.forDevice(shooterIndexMotor)
-        .addSignals(
-            indexVelocitySignal, indexVoltageSignal, indexSupplyCurrentSignal);
+        .addSignals(indexVelocitySignal, indexVoltageSignal, indexSupplyCurrentSignal);
   }
 
   public void prepareScoreRequest(double distance) {
@@ -191,6 +199,7 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
     DogLog.log("Shooter/index/RPM", indexMotorRpm);
     DogLog.log("Shooter/GoalShootingRPM", shootingRpm);
     DogLog.log("Shooter/GoalFeedingRPM", feedingRpm);
+    DogLog.log("Shooter/TargetPivotAngle", targetPivotAngle);
     DogLog.log("Shooter/FeederBasedFeedForward", feederBasedFeedForward);
     DogLog.log("Shooter/AtGoal", atGoal);
 
@@ -201,32 +210,47 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
 
     switch (state) {
       case IDLE -> {
-        var setpoint = ShooterConfig.IDLE_RPM / 60.0;
-        shooterFlywheelRightMotor.setControl(velocityRequest.withVelocity(setpoint).withFeedForward(0.0));
+        var flywheelSetpoint = ShooterConfig.IDLE_RPM / 60.0;
+        shooterFlywheelRightMotor.setControl(velocityRequest.withVelocity(flywheelSetpoint).withFeedForward(0.0));
+        shooterIndexMotor.setControl(indexVoltageRequest.withOutput(0.0));
+        // Optionally hold pivot at a safe stowed position or default angle
+        shooterPivotMotor.setControl(pivotPositionRequest.withPosition(0.0));
         DogLog.log("Shooter/RpmSetpoint", ShooterConfig.IDLE_RPM);
       }
       case PREPARE_SCORE -> {
-        var setpoint = shootingRpm / 60.0;
+        var flywheelSetpoint = shootingRpm / 60.0;
         shooterFlywheelRightMotor.setControl(
-            velocityRequest.withVelocity(setpoint).withFeedForward(feederBasedFeedForward));
+            velocityRequest.withVelocity(flywheelSetpoint).withFeedForward(feederBasedFeedForward));
+        // Keep indexer stopped while spinning up/preparing to shoot
+        shooterIndexMotor.setControl(indexVoltageRequest.withOutput(0.0));
+        // Track the calculated target angle for scoring
+        shooterPivotMotor.setControl(pivotPositionRequest.withPosition(targetPivotAngle));
         DogLog.log("Shooter/RpmSetpoint", shootingRpm);
       }
       case SCORE -> {
-        var setpoint = shootingRpm / 60.0;
+        var flywheelSetpoint = shootingRpm / 60.0;
         shooterFlywheelRightMotor.setControl(
-            velocityRequest.withVelocity(setpoint).withFeedForward(feederBasedFeedForward));
+            velocityRequest.withVelocity(flywheelSetpoint).withFeedForward(feederBasedFeedForward));
+        // Run indexer voltage/speed to feed game pieces into the flywheel
+        shooterIndexMotor.setControl(indexVoltageRequest.withOutput(ShooterConfig.INDEX_SCORE_VOLTAGE));
+        // Maintain pivot tracking
+        shooterPivotMotor.setControl(pivotPositionRequest.withPosition(targetPivotAngle));
         DogLog.log("Shooter/RpmSetpoint", shootingRpm);
       }
       case PREPARE_FEED -> {
-        var setpoint = feedingRpm / 60.0;
+        var flywheelSetpoint = feedingRpm / 60.0;
         shooterFlywheelRightMotor.setControl(
-            velocityRequest.withVelocity(setpoint).withFeedForward(feederBasedFeedForward));
+            velocityRequest.withVelocity(flywheelSetpoint).withFeedForward(feederBasedFeedForward));
+        shooterIndexMotor.setControl(indexVoltageRequest.withOutput(0.0));
+        shooterPivotMotor.setControl(pivotPositionRequest.withPosition(targetPivotAngle));
         DogLog.log("Shooter/RpmSetpoint", feedingRpm);
       }
       case FEED -> {
-        var setpoint = feedingRpm / 60.0;
+        var flywheelSetpoint = feedingRpm / 60.0;
         shooterFlywheelRightMotor.setControl(
-            velocityRequest.withVelocity(setpoint).withFeedForward(feederBasedFeedForward));
+            velocityRequest.withVelocity(flywheelSetpoint).withFeedForward(feederBasedFeedForward));
+        shooterIndexMotor.setControl(indexVoltageRequest.withOutput(ShooterConfig.INDEX_FEED_VOLTAGE));
+        shooterPivotMotor.setControl(pivotPositionRequest.withPosition(targetPivotAngle));
         DogLog.log("Shooter/RpmSetpoint", feedingRpm);
       }
     }
@@ -236,7 +260,12 @@ public class Shooter extends StateMachineSubsystem<ShooterState> implements Powe
   protected void collectInputs() {
     shootingRpm = Math.min(ShooterConfig.MAX_SAFE_RPM, distanceToScoringRpm(scoreDistance));
     feedingRpm = Math.min(ShooterConfig.MAX_SAFE_RPM, distanceToFeedingRpm(feedDistance));
-
+    targetPivotAngle = MathUtil.clamp(
+                  distanceToPivotAngle(scoreDistance),
+                  ShooterConfig.MIN_PIVOT_ANGLE,
+                  ShooterConfig.MAX_PIVOT_ANGLE
+                );
+    
     if (DSOptions.PIT_FUNCTIONALITY.getAsBoolean()) {
       shootingRpm = ShooterConfig.PIT_FUNCTIONALITY_RPM;
       feedingRpm = ShooterConfig.PIT_FUNCTIONALITY_RPM;

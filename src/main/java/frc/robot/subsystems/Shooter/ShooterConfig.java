@@ -29,6 +29,9 @@ public class ShooterConfig {
 
   public static final double GP_DETECT_CURRENT_THRESHOLD = 70.0;
 
+  public static final double INDEX_FEED_VOLTAGE = 6.0;
+  public static final double INDEX_SCORE_VOLTAGE = 6.0;
+
   public static final double IDLE_RPM = 750;
 
   public static final double PIT_FUNCTIONALITY_RPM = 800;
@@ -38,6 +41,9 @@ public class ShooterConfig {
   public static final double MAX_SAFE_RPM = 6000;
 
   public static final Transform2d SHOOTER_TO_ROBOT = new Transform2d(0.0, 0.0, Rotation2d.k180deg);
+
+  public static final double MIN_PIVOT_ANGLE = 0.0;
+  public static final double MAX_PIVOT_ANGLE = 90.0;
 
   public static final InterpolatingDoubleTreeMap FEEDER_CURRENT_TO_SHOOTER_FEED_FORWARD =
       TunableInterpolatingDoubleTreeMap.ofEntries(
@@ -64,6 +70,18 @@ public class ShooterConfig {
       PolynomialRegression.quadratic("Shooter/ScoringRegression", DISTANCE_TO_SCORE_RPM);
   public static final PolynomialRegression FEEDING_REGRESSION_MODEL =
       PolynomialRegression.quadratic("Shooter/FeedingRegression", DISTANCE_TO_FEEDING_RPM);
+
+  public static final InterpolatingDoubleTreeMap DISTANCE_TO_PIVOT_ANGLE =
+      TunableInterpolatingDoubleTreeMap.ofEntries(
+          "Shooter/DistanceToPivotAngle",
+          // TODO: Tune these distance (meters) to pivot angle (degrees/rotations) points for your robot
+          Map.entry(1.42, 15.0),
+          Map.entry(2.79, 25.0),
+          Map.entry(3.46, 35.0),
+          Map.entry(4.92, 45.0));
+
+  public static final PolynomialRegression PIVOT_REGRESSION_MODEL =
+      PolynomialRegression.quadratic("Shooter/PivotRegression", DISTANCE_TO_PIVOT_ANGLE);
 
   public static final InterpolatingDoubleTreeMap DISTANCE_TO_SCORE_TOF =
       TunableInterpolatingDoubleTreeMap.ofEntries(
